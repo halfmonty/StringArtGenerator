@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+<script src="ndarray.js"></script>
+<script src="loading-bar.js"></script>
+<title>Hello OpenCV.js</title>
+<link rel="stylesheet" type="text/css" href="loading-bar.css" />
+</head>
+<body>
+<h2>Hello OpenCV.js</h2>
+<p id="status">OpenCV.js is loading...</p>
+<div id="loadingbar"></div><br/><br/>
+<div>
+  <div class="inputoutput">
+    <div class="caption">imageSrc <input type="file" id="fileInput" name="file" /></div><br/>
+    <img id="imageSrc" alt="No Image" />
+  </div>
+  <div class="inputoutput">
+    <div class="caption">Temp Formatted output</div>
+    <canvas id="canvasOutput" ></canvas>
+  </div>
+  <div class="inputoutput">
+    <div class="caption">Line Output</div>
+    <canvas id="canvasOutput2" ></canvas>    
+  </div>
+</div>
+
+<script type="text/javascript">
+let MAX_LINES = 4000;
+let N_PINS = 36*8;
+let MIN_LOOP = 20;
+let MIN_DISTANCE = 20;
+let LINE_WEIGHT = 15;
+let FILENAME = "";
+let SCALE = 20;
+let HOOP_DIAMETER = 0.625;
+
+let img;
+
+// set up element variables
+let imgElement = document.getElementById("imageSrc")
+let inputElement = document.getElementById("fileInput");
+inputElement.addEventListener("change", (e) => {
+  imgElement.src = URL.createObjectURL(e.target.files[0]);
+}, false);
+let canvas = document.getElementById("canvasOutput");
+var ctx=canvas.getContext("2d");
+let canvas2 = document.getElementById("canvasOutput2");
+var ctx2=canvas.getContext("2d");
+let status = document.getElementById("status");
+
+var bar1 = new ldBar("#loadingbar");
+var bar2 = document.getElementById('loadingbar').ldBar;
+bar1.set(0);
+
+let length;
+var R = {};
+
+//pre initilization
+let pin_coords;
+let center;
+let radius;
+
+let line_cache_y;
+let line_cache_x;
+let line_cache_length;
+let line_cache_weight;
+
+//line variables
+let error;
+let img_result;    
+let result;
+let line_mask;
+    
+let line_sequence;
+let pin;
+let thread_length;
+let last_pins;
+
+
+imgElement.onload = function() {
+    //initially load image to canvas
+    let mat = cv.imread(imgElement, cv.IMREAD_GRAYSCALE);
+    cv.imshow('canvasOutput', mat);
+    mat.delete();
+    
+    //read from canvas, make grayscale
+    let src = cv.imread("canvasOutput", cv.IMREAD_GRAYSCALE);
+    let img = new cv.Mat();
+    cv.cvtColor(src, img, cv.COLOR_RGBA2GRAY, 0);
+    cv.imshow('canvasOutput', img);
+    length = img.rows;
+    src.delete(); img.delete();
+
+    //circle crop canvas
+    ctx.globalCompositeOperation='destination-in';
+    ctx.beginPath();
+    ctx.arc(length/2,length/2, length/2, 0, Math.PI*2);
+    ctx.closePath();
+    ctx.fill();
+    
+    // fetch clean grayscale cropped image back from canvas
+    src = cv.imread("canvasOutput");
+    let rgbaPlanes = new cv.MatVector();
+    cv.split(src, rgbaPlanes);
+    // Get R channel because the other channels aren't necessary in grayscale
+    R = rgbaPlanes.get(0);
+    length = R.rows;
+    src.delete(); rgbaPlanes.delete();
+
+    NonBlockingCalculatePins();
+    
+}
+
+function NonBlockingCalculatePins(){
+    // set up necessary variables
+    console.log("Calculating pins...");
+    status.textContent = "Calculating pins...";
+    pin_coords = [];
+    center = length / 2;
+    radius = length / 2 - 1/2
+    let i = 0;
+
+    (function codeBlock(){
+        if(i < N_PINS){
+            angle = 2 * Math.PI * i / N_PINS;
+            pin_coords.push([Math.floor(center + radius * Math.cos(angle)),
+                Math.floor(center + radius * Math.sin(angle))]);
+            i++;
+            setTimeout(codeBlock, 0);
+        } else {
+            console.log('Done Calculating pins');
+            status.textContent = "Done Calculating pins";
+            NonBlockingPrecalculateLines();
+        }
+    })();
+}
+
+function NonBlockingPrecalculateLines(){
+    // set up necessary variables
+    console.log("Precalculating all lines...");
+    status.textContent = "Precalculating all lines...";
+    line_cache_y = Array.apply(null, {length: (N_PINS * N_PINS)});
+    line_cache_x = Array.apply(null, {length: (N_PINS * N_PINS)});
+    line_cache_length = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 0;});
+    line_cache_weight = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 1;});
+    let a = 0;
+
+    (function codeBlock(){
+        if(a < N_PINS){
+            for (b = a + MIN_DISTANCE; b < N_PINS; b++) {
+                x0 = pin_coords[a][0];
+                y0 = pin_coords[a][1];
+            
+                x1 = pin_coords[b][0];
+                y1 = pin_coords[b][1];
+                
+                d = Math.floor(Number(Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0)*(y1 - y0))));
+                xs = linspace(x0, x1, d);
+                ys = linspace(y0, y1, d);
+
+                line_cache_y[b*N_PINS + a] = ys;
+                line_cache_y[a*N_PINS + b] = ys;
+                line_cache_x[b*N_PINS + a] = xs;
+                line_cache_x[a*N_PINS + b] = xs;
+                line_cache_length[b*N_PINS + a] = d;
+                line_cache_length[a*N_PINS + b] = d;
+            }
+            a++;
+            setTimeout(codeBlock, 0);
+        } else {
+            console.log('Done Precalculating Lines');
+            status.textContent = "Done Precalculating Lines";
+            NonBlockingLineCalculator();
+        }
+    })();
+}
+
+function NonBlockingLineCalculator(){
+    // set up necessary variables
+    console.log("Drawing Lines...");
+    status.textContent = "Drawing Lines...";
+    error = nj.ones([R.rows, R.cols]).multiply(0xff).subtract(nj.uint8(R.data).reshape(R.rows,R.cols));
+    img_result = nj.ones([R.cols, R.rows ]).multiply(0xff);    
+    result = nj.ones([R.cols * SCALE, R.rows * SCALE]).multiply(0xff);
+    result = new cv.matFromArray(R.cols * SCALE, R.rows * SCALE, cv.CV_8UC1, result.selection.data);
+    line_mask = nj.zeros([R.cols, R.rows], 'float64');
+    
+    line_sequence = [];
+    pin = 0;
+    line_sequence.push(pin);
+    thread_length = 0;
+    last_pins = [];
+    let l = 0;
+
+    (function codeBlock(){
+        if(l < MAX_LINES){
+            if(l%10 == 0){
+                draw();
+            }
+
+            max_err = -1;
+            best_pin = -1;
+
+            for(offset=MIN_DISTANCE; offset < N_PINS - MIN_DISTANCE; offset++){
+                test_pin = (pin + offset) % N_PINS;
+                if(last_pins.includes(test_pin)){
+                    continue;
+                }else {
+
+                    xs = line_cache_x[test_pin * N_PINS + pin];
+                    ys = line_cache_y[test_pin * N_PINS + pin];
+
+                    line_err = getLineErr(error, ys, xs) * line_cache_weight[test_pin * N_PINS + pin];
+
+                    if( line_err > max_err){
+                        max_err = line_err;
+                        best_pin = test_pin;
+                    }
+                }
+            }
+
+            line_sequence.push(best_pin);
+
+            xs = line_cache_x[best_pin * N_PINS + pin];
+            ys = line_cache_y[best_pin * N_PINS + pin];
+            weight = LINE_WEIGHT * line_cache_weight[best_pin * N_PINS + pin];
+            
+            line_mask = nj.zeros([R.cols, R.rows], 'float64');
+            line_mask = setLine(line_mask, ys, xs, weight);
+            error = subtractArrays(error, line_mask);
+
+
+            
+            p = new cv.Point(pin_coords[pin][0] * SCALE, pin_coords[pin][1] * SCALE);
+            p2 = new cv.Point(pin_coords[best_pin][0] * SCALE, pin_coords[best_pin][1] * SCALE);
+            cv.line(result, p, p2, new cv.Scalar(0, 0, 0), 4, 8, 0);
+
+            x0 = pin_coords[pin][0];
+            y0 = pin_coords[pin][1];
+
+            x1 = pin_coords[best_pin][0];
+            y1 = pin_coords[best_pin][1];
+
+            dist = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+            thread_length += HOOP_DIAMETER / length * dist;
+
+            last_pins.push(best_pin);
+            if(last_pins.length > 20){
+                last_pins.shift();
+            }
+            pin = best_pin;
+
+            //update loading bar
+            bar1.set(Math.round((l / MAX_LINES) * 100))
+            status.textContent = l + " Lines drawn";
+
+            l++;
+            setTimeout(codeBlock, 0);
+        } else {
+            console.log('Done Drawing Lines');
+            Finalize();
+        }
+    })();
+}
+
+function draw(){
+    let dsize = new cv.Size(R.cols, R.rows);
+    let dst = new cv.Mat();
+    cv.resize(result, dst, dsize, 0, 0, cv.INTER_AREA);
+    cv.imshow('canvasOutput2', dst);
+    dst.delete();
+}
+
+function Finalize() {
+    let dsize = new cv.Size(R.cols, R.rows);
+    let dst = new cv.Mat();
+    cv.resize(result, dst, dsize, 0, 0, cv.INTER_AREA);
+    img_result = nj.uint8(dst.data).reshape(R.rows,R.cols);
+    
+
+    let diff = img_result.subtract(nj.uint8(R.data).reshape(R.rows,R.cols));
+    mul = nj.uint8(compareMul(img_result.selection.data, R.data)).reshape(R.rows,R.cols);
+    absdiff = compareAbsdiff(diff.selection.data, mul.selection.data);
+
+    console.log(getSum(absdiff) / (length * length));
+    console.log("complete");
+
+    cv.imshow('canvasOutput2', dst);
+    console.log(line_sequence);
+    status.textContent = "Complete";
+    dst.delete();
+}
+
+function getLineErr(arr, coords1, coords2){
+    let result = new Uint8Array(coords1.length);
+    for(i=0;i<coords1.length;i++){
+        result[i] = arr.get(coords1[i], coords2[i]);
+    }
+    return getSum(result);
+}
+
+function setLine(arr, coords1, coords2, line){
+    for(i=0;i<coords1.length;i++){
+        arr.set(coords1[i], coords2[i], line);
+    }
+    return arr;
+}
+
+function compareMul(arr1, arr2){
+    let result = new Uint8Array(arr1.length);
+    for(i=0;i<arr1.length;i++){
+        result[i] = (arr1[i] < arr2[i]) * 254 + 1 ;
+    }
+    return result;
+}
+
+function compareAbsdiff(arr1, arr2){
+    let rsult = new Uint8Array(arr1.length);
+    for(i=0;i<arr1.length;i++){
+        rsult[i] = (arr1[i] * arr2[i]);
+    }
+    return rsult;
+}
+
+function subtractArrays(arr1, arr2) {
+    for(i=0; i<arr1.selection.data.length;i++){
+        arr1.selection.data[i] = arr1.selection.data[i] - arr2.selection.data[i]
+        if(arr1.selection.data[i] < 0){
+            arr1.selection.data[i] = 0;
+        }else if (arr1.selection.data[i] > 255){
+            arr1.selection.data[i] = 255;
+        }
+    }
+    return arr1;
+}
+
+function subtractArraysSimple(arr1, arr2) {
+    for(i=0; i<arr1.length;i++){
+        arr1[i] = arr1[i] - arr2[i];
+    }
+    return arr1;
+}
+
+function getSum(arr) {
+    let v = 0;
+    for(i=0;i<arr.length;i++){
+        v = v + arr[i];
+    }
+  return v;
+}
+
+function makeArr(startValue, stopValue, cardinality) {
+  var arr = [];
+  var currValue = startValue;
+  var step = (stopValue - startValue) / (cardinality - 1);
+  for (var i = 0; i < cardinality; i++) {
+    arr.push(Math.round(currValue + (step * i)));
+  }
+  return arr;
+}
+
+function AddRGB(arr1, arr2, arr3){
+    for(i=0;i<arr1.data.length;i++){
+        var avg = (arr1.data[i] + arr2.data[i] + arr3.data[i]);
+        arr1.data[i] = avg;
+    }
+    return arr1;
+}
+
+function linspace(a,b,n) {
+    if(typeof n === "undefined") n = Math.max(Math.round(b-a)+1,1);
+    if(n<2) { return n===1?[a]:[]; }
+    var i,ret = Array(n);
+    n--;
+    for(i=n;i>=0;i--) { ret[i] = Math.floor((i*b+(n-i)*a)/n); }
+    return ret;
+}
+
+function onOpenCvReady() {
+    // even when this is called, sometimes it's still not ready, adding slight time buffer
+    setTimeout(function(){
+        document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
+    }, 1000);
+}
+</script>
+<script async src="opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+</body>
+</html>
