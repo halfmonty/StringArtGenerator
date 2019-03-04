@@ -11,16 +11,30 @@
 <body>
 <h2>String Art Generator</h2>
 <p id="status">Please wait: loading...</p><br/>
-<span>Wait for generator to say ready. Use Square images or else the results will be weird.<br/>
+<span>Wait for generate to complete loading. Use Square images or else the results will be weird.<br/>
 For best results use close up high contrast pictures.<br/>
 If the page crashes (which it may) just refresh or close and re-open the tab/window.<br/><br/>
 </span>
 <div style="height: 50px;">
-    <div style="float: left;" class="caption">Select an Image to start <input type="file" id="fileInput" name="file" /></div>
+    <div style="float: left;" class="caption">Select an Image to start <input type="file" id="fileInput" name="file" /></div><br/>
     <div style="float: right;">
         Already have steps generated? <button onclick="onHasSteps();">Click Here</button>
     </div>
 </div>
+<div>Variables to play with: <br/>
+    <div style="float: left; margin-right: 10px;">
+        <span>Number of Pins </span>
+        <input id="numberOfPins" type="text">
+    </div>
+    <div style="float: left; margin-right: 10px;">
+        <span>Number of Lines </span>
+        <input id="numberOfLines" type="text">
+    </div>
+    <div style="float: left;">
+        <span>Line Weight (effects contrast) </span>
+        <input id="lineWeight" type="text">
+    </div>
+</div><br/><br/>
 <div>
     <div id="step1" class="inputoutput center hidden">
         <img class="centerImage" id="imageSrc" alt="No Image" />
@@ -91,6 +105,9 @@ let showPins = document.getElementById("showPins");
 let pinsOutput = document.getElementById("pinsOutput");
 let incrementalDrawing = document.getElementById("incrementalDrawing");
 let incrementalCurrentStep = document.getElementById("incrementalCurrentStep");
+let numberOfPins = document.getElementById("numberOfPins");
+let numberOfLines = document.getElementById("numberOfLines");
+let lineWeight = document.getElementById("lineWeight");
 
 let length;
 var R = {};
@@ -623,6 +640,21 @@ function onOpenCvReady() {
     setTimeout(function(){
         document.getElementById('status').innerHTML = 'Generator is ready.';
     }, 1000);
+
+    numberOfPins.value = N_PINS;
+    numberOfPins.addEventListener("keyup", function(event) {
+        N_PINS = parseInt(event.target.value);
+    });
+
+    numberOfLines.value = MAX_LINES;
+    numberOfLines.addEventListener("keyup", function(event) {
+        MAX_LINES = parseInt(event.target.value);
+    });
+
+    lineWeight.value = LINE_WEIGHT;
+    lineWeight.addEventListener("keyup", function(event) {
+        LINE_WEIGHT = parseInt(event.target.value);
+    });
 }
 </script>
 <script async src="opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
