@@ -2,79 +2,100 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
-        <script src="ndarray.js"></script>
-        <title>Hello OpenCV.js</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="style.css">
+
+        <title>Hello OpenCV.js</title>
     </head>
 <body>
-<h2>String Art Generator</h2>
-<p id="status">Please wait: loading...</p><br/>
-<span>Wait for generate to complete loading. Use Square images or else the results will be weird.<br/>
-For best results use close up high contrast pictures.<br/>
-If the page crashes (which it may) just refresh or close and re-open the tab/window.<br/><br/>
-</span>
-<div style="height: 50px;">
-    <div style="float: left;" class="caption">Select an Image to start <input type="file" id="fileInput" name="file" /></div><br/>
-    <div style="float: right;">
-        Already have steps generated? <button onclick="onHasSteps();">Click Here</button>
-    </div>
-</div>
-<div>Variables to play with: <br/>
-    <div style="float: left; margin-right: 10px;">
-        <span>Number of Pins </span>
-        <input id="numberOfPins" type="text">
-    </div>
-    <div style="float: left; margin-right: 10px;">
-        <span>Number of Lines </span>
-        <input id="numberOfLines" type="text">
-    </div>
-    <div style="float: left;">
-        <span>Line Weight (effects contrast) </span>
-        <input id="lineWeight" type="text">
-    </div>
-</div><br/><br/>
-<div>
-    <div id="step1" class="inputoutput center hidden">
-        <img class="centerImage" id="imageSrc" alt="No Image" />
-    </div>
-    <div id="step2" class="inputoutput center hidden">
-        <div class="caption">Cropped and Grayscaled:</div>
-        <canvas class="centerCanvasMedium" id="canvasOutput" ></canvas>
-    </div>
-    <div id="step3" class="inputoutput center hidden">
-        <div class="caption">String Art Output:</div>
-        <div id="drawStatus"></div>
-        <canvas class="centerCanvasLarge" id="canvasOutput2" ></canvas>
-    </div>
-    <div id="showPins" class="inputoutput center hidden">
-        <textarea id="pinsOutput" rows="10" cols="100"></textarea>
-        <div class="centerBorderless">
-            <span>These examples will overwrite your generated output. Please copy your output first if you need to before clicking an example button.</span><br/><br/>
-            <button style="float: left;" onclick="example1();">Example 1</button>
-            <button style="float: left;" onclick="example2();">Example 2</button>
-            <button style="float: left;" onclick="example3();">Example 3</button>
-        </div><br/><br/>
-        <span>Copy these numbers to save for later so you don't have to generate them again.</span><br/>
-        <span>If you copied the numbers from a previous run, paste them above.</span><br/>
-        <span>These numbers are used to help walk you through creating this string art</span><br/><br/>
-        <div style="height: 30px;">
-            <button style="float: left;" onclick="startCreating();">Start Creating</button>
-            <button style="float: right;" onclick="startDrawing();">Just Draw</button>
+    <div class="container">
+        <div class="jumbotron" style="padding-bottom: 20px !important;">
+            <h1>String Art Generator</h1>
+            <div style="float: right; margin-top: -40px;">
+                Already have steps generated? 
+                <button class="btn btn-primary" onclick="onHasSteps();">Click Here</button>
+            </div>
+            <h2 id="status">Please wait: loading...</h2><br/>
+
+            <span>Wait for generate to complete loading.<br/>
+            For best results use close up high contrast pictures.<br/>
+            If the page crashes (which it may) just refresh or close and re-open the tab/window.<br/><br/>
+            </span>
+            <br/>
+            <div><h5>Variables to play with:</h5></div>
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="numberOfPins">Number of Pins</label>
+                        <input type="text" class="form-control" id="numberOfPins">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="numberOfLines">Number of Lines</label>
+                        <input type="text" class="form-control" id="numberOfLines">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="lineWeight">Line Weight</label>
+                        <input type="text" class="form-control" id="lineWeight">
+                    </div>
+                </div>
+            </div>
+            <label class="btn btn-primary btn-file">
+                Click Here and select an Image to Start  <input type="file" id="fileInput" style="display: none;">
+            </label>
         </div>
-    </div>
-    <div id="incrementalDrawing" class="inputoutput center hidden">
-        <div class="caption">String Art Output:</div>
-        <span id="incrementalCurrentStep"></span>
-        <div id="drawStatus"></div>
-        <canvas class="centerCanvasLarge" id="canvasOutput3" ></canvas>
-        <div style="height: 30px;">
-            <button style="float: left;" onclick="lastStep();">Last Step</button>
-            <button style="float: right;" onclick="nextStep();">Next Step</button>
+        
+        
+        <div class="row">
+            <div class="col">
+                <div id="step1" class="inputoutput center hidden">
+                    <img class="centerImage" id="imageSrc" alt="No Image" />
+                </div>
+                <div id="step2" class="inputoutput center hidden">
+                    <div class="caption">Cropped and Grayscaled:</div>
+                    <canvas class="centerCanvasMedium" id="canvasOutput" ></canvas>
+                </div>
+                <div id="step3" class="inputoutput center hidden">
+                    <div class="caption">String Art Output:</div>
+                    <div id="drawStatus"></div>
+                    <canvas class="centerCanvasLarge" id="canvasOutput2" ></canvas>
+                </div>
+                <div id="showPins" class="inputoutput center hidden">
+                    <textarea id="pinsOutput" rows="10" cols="100"></textarea>
+                    <div class="centerBorderless">
+                        <span>These examples will overwrite your generated output. Please copy your output first if you need to before clicking an example button.</span><br/><br/>
+                        <button style="float: left;" onclick="example1();">Example 1</button>
+                        <button style="float: left;" onclick="example2();">Example 2</button>
+                        <button style="float: left;" onclick="example3();">Example 3</button>
+                    </div><br/><br/>
+                    <span>Copy these numbers to save for later so you don't have to generate them again.</span><br/>
+                    <span>If you copied the numbers from a previous run, paste them above.</span><br/>
+                    <span>These numbers are used to help walk you through creating this string art</span><br/><br/>
+                    <div style="height: 30px;">
+                        <button style="float: left;" onclick="startCreating();">Start Creating</button>
+                        <button style="float: right;" onclick="startDrawing();">Just Draw</button>
+                    </div>
+                </div>
+                <div id="incrementalDrawing" class="inputoutput center hidden">
+                    <div class="caption">String Art Output:</div>
+                    <span id="incrementalCurrentStep"></span>
+                    <div id="drawStatus"></div>
+                    <canvas class="centerCanvasLarge" id="canvasOutput3" ></canvas>
+                    <div style="height: 30px;">
+                        <button style="float: left;" onclick="lastStep();">Last Step</button>
+                        <button style="float: right;" onclick="nextStep();">Next Step</button>
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
-</div>
+
 
 
 <script type="text/javascript">
@@ -153,7 +174,23 @@ imgElement.onload = function() {
     ctx2.canvas.weight = IMG_SIZE * 2;
     ctx2.canvas.height = IMG_SIZE * 2;
     ctx.clearRect(0,0, IMG_SIZE, IMG_SIZE);
-    ctx.drawImage(base_image, 0, 0, IMG_SIZE, IMG_SIZE);
+
+    var selectedWidth = base_image.width;
+    var selectedHeight = base_image.height;
+    var xOffset = 0;
+    var yOffset = 0;
+    // square crop  center of picture
+    if(base_image.height > base_image.width){
+        selectedWidth = base_image.width;
+        selectedHeight = base_image.width;
+        yOffset = Math.floor((base_image.height - base_image.width) / 2);
+    }else if(base_image.width > base_image.height) {
+        selectedWidth = base_image.height;
+        selectedHeight = base_image.height;
+        xOffset = Math.floor((base_image.width - base_image.height) / 2)
+    }
+
+    ctx.drawImage(base_image, xOffset, yOffset, selectedWidth, selectedHeight, 0, 0, IMG_SIZE, IMG_SIZE);
     length = IMG_SIZE;
 
     // make grayscale by averaging the RGB channels.
@@ -172,7 +209,7 @@ imgElement.onload = function() {
         }
     }
     R.selection.data = rdata;
-    ctx.putImageData(imgPixels, 0, 0, 0, 0, imgPixels.width, imgPixels.height);
+    ctx.putImageData(imgPixels, 0, 0, 0, 0, IMG_SIZE, IMG_SIZE);
 
     //circle crop canvas
     ctx.globalCompositeOperation='destination-in';
@@ -360,6 +397,7 @@ function Finalize() {
     pinsOutput.value = line_sequence;
     showPins.classList.remove('hidden');
     dst.delete(); result.delete();
+    window.scrollTo({ top: 5000, left: 0, behavior: 'smooth' });
 }
 
 function getLineErr(arr, coords1, coords2){
@@ -494,6 +532,8 @@ function startCreating(){
 
     line_sequence = pinsOutput.value.split(",").map(V => { return parseInt(V)});
 
+    window.scrollTo({ top: 5000, left: 0, behavior: 'smooth' });
+
     incrementalCurrentStep.textContent = "";
     pointIndex = 0;
     if(pin_coords == null){
@@ -514,6 +554,8 @@ function startDrawing(){
     ctx3.drawImage(base_image2, 0, 0, IMG_SIZE * 2, IMG_SIZE * 2);
 
     line_sequence = pinsOutput.value.split(",").map(V => { return parseInt(V)});
+
+    window.scrollTo({ top: 5000, left: 0, behavior: 'smooth' });
 
     incrementalCurrentStep.textContent = "";
     pointIndex = 0;
@@ -610,6 +652,7 @@ function onHasSteps(){
     step2.classList.add('hidden');
     step3.classList.add('hidden');
     showPins.classList.remove('hidden');
+    window.scrollTo({ top: 5000, left: 0, behavior: 'smooth' });
 }
 
 document.body.onkeydown = function(e){
@@ -658,5 +701,9 @@ function onOpenCvReady() {
 }
 </script>
 <script async src="opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </body>
 </html>
