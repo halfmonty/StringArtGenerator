@@ -5,3 +5,5 @@ This project is heavily based on the work of reddit user /u/kmmeerts from his po
 
 
 To use ths generator, navigate to: https://halfmonty.github.io/StringArtGenerator/
+
+![](test2.gif)
