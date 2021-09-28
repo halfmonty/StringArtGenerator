@@ -28,6 +28,19 @@
             </span>
             <br/>
             <div><h5>Variables to play with:</h5></div>
+			<div class="row">
+				<div class="col-lg-12 col-md-12 col-xs-12">
+					<div class="form-check form-check-inline">
+					  <input class="form-check-input" type="radio" name="inlineRadioOptions" onclick="show1();"  id="inlineRadio1" value="circle">
+					  <label class="form-check-label" for="inlineRadio1">Circle</label>
+					</div>
+					<div class="form-check form-check-inline">
+					  <input class="form-check-input" type="radio" name="inlineRadioOptions" onclick="show2();"  id="inlineRadio2" value="rectangle">
+					  <label class="form-check-label" for="inlineRadio2">Rectangle</label>
+					</div>
+				</div>
+			</div>
+			<div id="circle" style="display:none;">
             <div class="row">
                 <div class="col">
                     <div class="form-group">
@@ -35,24 +48,42 @@
                         <input type="text" class="form-control" id="numberOfPins">
                     </div>
                 </div>
-                <div class="col">
-                    <div class="form-group">
-                        <label for="numberOfLines">Number of Lines</label>
-                        <input type="text" class="form-control" id="numberOfLines">
-                    </div>
-                </div>
-                <div class="col">
-                    <div class="form-group">
-                        <label for="lineWeight">Line Weight</label>
-                        <input type="text" class="form-control" id="lineWeight">
-                    </div>
-                </div>
             </div>
-            <label class="btn btn-primary btn-file">
-                Click Here and select an Image to Start  <input type="file" id="fileInput" style="display: none;">
-            </label>
         </div>
-        
+        <div id="rectangle" style="display:none">
+			<div class="row">
+				<div class="col">
+					<div class="form-group">
+						<label for="numberOfHPins">Number of Horizontal Pins</label>
+						<input type="text" class="form-control" id="numberOfHPins">
+					</div>
+				</div>
+				<div class="col">
+					<div class="form-group">
+						<label for="numberOfVPins">Number of Vertical Pins</label>
+						<input type="text" class="form-control" id="numberOfVPins">
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col">
+				<div class="form-group">
+					<label for="numberOfLines">Number of Lines</label>
+					<input type="text" class="form-control" id="numberOfLines">
+				</div>
+			</div>
+			<div class="col">
+				<div class="form-group">
+					<label for="lineWeight">Line Weight</label>
+					<input type="text" class="form-control" id="lineWeight">
+				</div>
+			</div>
+		</div>
+		<label class="btn btn-primary btn-file">
+			Click Here and select an Image to Start  <input type="file" id="fileInput" style="display: none;">
+		</label>
+	</div>
         
         <div class="row">
             <div class="col">
@@ -104,10 +135,14 @@
 <script type="text/javascript">
 let IMG_SIZE = 500;
 let MAX_LINES = 4000;// 4000;
+let MAX_RLINES = 4000;// 4000;
 let N_PINS = 36*8;
+let N_HPINS = 36*2;
+let N_VPINS = 36*2;
 let MIN_LOOP = 20;
 let MIN_DISTANCE = 20;
 let LINE_WEIGHT = 20;
+let LINE_RWEIGHT = 20;
 let FILENAME = "";
 let SCALE = 20;
 let HOOP_DIAMETER = 0.625;
@@ -115,7 +150,8 @@ let HOOP_DIAMETER = 0.625;
 let img;
 
 // set up element variables
-let imgElement = document.getElementById("imageSrc")
+let isRectangle;
+let imgElement = document.getElementById("imageSrc");
 let inputElement = document.getElementById("fileInput");
 inputElement.addEventListener("change", (e) => {
   imgElement.src = URL.createObjectURL(e.target.files[0]);
@@ -130,7 +166,10 @@ let pinsOutput = document.getElementById("pinsOutput");
 let incrementalDrawing = document.getElementById("incrementalDrawing");
 let incrementalCurrentStep = document.getElementById("incrementalCurrentStep");
 let numberOfPins = document.getElementById("numberOfPins");
+let numberOfHPins = document.getElementById("numberOfHPins");
+let numberOfVPins = document.getElementById("numberOfVPins");
 let numberOfLines = document.getElementById("numberOfLines");
+let numberOfRLines = document.getElementById("numberOfRLines");
 let lineWeight = document.getElementById("lineWeight");
 
 let length;
@@ -165,6 +204,8 @@ let listenForKeys = false;
 //*******************************
 
 imgElement.onload = function() {
+	isRectangle = document.getElementById("inlineRadio2").checked;
+	isRectangle && console.log("This is a rectangle");
     listenForKeys = false;
     showStep(1);
     showPins.classList.add('hidden');
@@ -230,34 +271,58 @@ function NonBlockingCalculatePins(){
     console.log("Calculating pins...");
     status.textContent = "Calculating pins...";
     pin_coords = [];
+	console.log(length);
     center = length / 2;
-    radius = length / 2 - 1/2
+    radius = length / 2 - 1/2;
     let i = 0;
-
     (function codeBlock(){
-        if(i < N_PINS){
-            angle = 2 * Math.PI * i / N_PINS;
-            pin_coords.push([Math.floor(center + radius * Math.cos(angle)),
-                Math.floor(center + radius * Math.sin(angle))]);
-            i++;
-            setTimeout(codeBlock, 0);
-        } else {
-            console.log('Done Calculating pins');
-            status.textContent = "Done Calculating pins";
-            showStep(2);
-            NonBlockingPrecalculateLines();
-        }
+		if(isRectangle){
+			N_PINS = (N_HPINS * 2) + (N_VPINS * 2);
+			let pinHDistance = IMG_SIZE/(N_HPINS-1);
+			let pinVDistance = IMG_SIZE/(N_VPINS-1);
+			//need to change this - pins need to be divided across the img length
+			[...Array(N_HPINS).keys()].forEach(element => pin_coords.push([Math.floor(pinHDistance*element),IMG_SIZE]));
+			[...Array(N_VPINS).keys()].reverse().forEach(element => pin_coords.push([IMG_SIZE,Math.floor(pinVDistance*element)]));
+			//pin_coords.push([IMG_SIZE,IMG_SIZE]);
+			[...Array(N_HPINS).keys()].reverse().forEach(element => pin_coords.push([Math.floor(pinHDistance*element),0]));
+			[...Array(N_VPINS).keys()].forEach(element => pin_coords.push([0,Math.floor(pinVDistance*element)]));
+			console.log('Done Calculating pins');
+			status.textContent = "Done Calculating pins";
+			showStep(2);
+			NonBlockingPrecalculateLines();
+		} else {
+			if(i < N_PINS){
+				angle = 2 * Math.PI * i / N_PINS;
+				pin_coords.push([Math.floor(center + radius * Math.cos(angle)),
+					Math.floor(center + radius * Math.sin(angle))]);
+				i++;
+				setTimeout(codeBlock, 0);
+			} else {
+				console.log('Done Calculating pins');
+				status.textContent = "Done Calculating pins";
+				showStep(2);
+				NonBlockingPrecalculateLines();
+			}
+		}
     })();
+	console.log(pin_coords);
 }
 
 function NonBlockingPrecalculateLines(){
     // set up necessary variables
     console.log("Precalculating all lines...");
     status.textContent = "Precalculating all lines...";
-    line_cache_y = Array.apply(null, {length: (N_PINS * N_PINS)});
-    line_cache_x = Array.apply(null, {length: (N_PINS * N_PINS)});
-    line_cache_length = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 0;});
-    line_cache_weight = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 1;});
+	/*if(isRectangle) {
+	    line_cache_y = Array.apply(null, {length: N_VPINS});
+		line_cache_x = Array.apply(null, {length: N_HPINS});
+		line_cache_length = Array.apply(null, {length: (N_HPINS * N_VPINS)}).map(Function.call, function(){return 0;});
+		line_cache_weight = Array.apply(null, {length: (N_HPINS * N_VPINS)}).map(Function.call, function(){return 1;});
+		} else {*/
+		line_cache_y = Array.apply(null, {length: (N_PINS * N_PINS)});
+		line_cache_x = Array.apply(null, {length: (N_PINS * N_PINS)});
+		line_cache_length = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 0;});
+		line_cache_weight = Array.apply(null, {length: (N_PINS * N_PINS)}).map(Function.call, function(){return 1;});
+	//}
     let a = 0;
 
     (function codeBlock(){
@@ -691,7 +756,15 @@ function onOpenCvReady() {
     numberOfPins.addEventListener("keyup", function(event) {
         N_PINS = parseInt(event.target.value);
     });
-
+    numberOfHPins.value = N_HPINS;
+    numberOfHPins.addEventListener("keyup", function(event) {
+        N_HPINS = parseInt(event.target.value);
+    });
+    numberOfVPins.value = N_VPINS;
+    numberOfVPins.addEventListener("keyup", function(event) {
+        N_VPINS = parseInt(event.target.value);
+    });
+	
     numberOfLines.value = MAX_LINES;
     numberOfLines.addEventListener("keyup", function(event) {
         MAX_LINES = parseInt(event.target.value);
@@ -708,5 +781,15 @@ function onOpenCvReady() {
 <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script>
+function show1(){
+  document.getElementById('rectangle').style.display ='none';
+  document.getElementById('circle').style.display ='block';
+}
+function show2(){
+  document.getElementById('rectangle').style.display = 'block';
+  document.getElementById('circle').style.display = 'none';
+}
+</script>
 </body>
 </html>
